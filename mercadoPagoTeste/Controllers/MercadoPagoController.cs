@@ -10,6 +10,9 @@ using mercadoPagoTeste.Helpers;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json;
+using MercadoPago.Client.Customer;
+using MercadoPago.Resource.Customer;
+using MercadoPago.Resource.Common;
 
 
 
@@ -24,8 +27,48 @@ namespace mercadoPagoTeste.Controllers
     {
 
         // POST api/<MercadoPagoController>
+        //[HttpPost("/api/ProcessarPagamentoCartao")]
+        //public async Task<IActionResult> ProcessarPagamentoCartao([FromBody] SolicitacaoPagamentoCartao solicitacaopagamentoCartao)
+        //{
+        //    try
+        //    {
+        //        MercadoPagoConfig.AccessToken = "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172";
+
+        //        var requestOptions = new RequestOptions();
+        //        requestOptions.CustomHeaders.Add("x-idempotency-key", Guid.NewGuid().ToString());
+
+        //        var paymentRequest = new PaymentCreateRequest
+        //        {
+        //            TransactionAmount = solicitacaopagamentoCartao.TransactionAmount,
+        //            Token = solicitacaopagamentoCartao.Token,
+        //            Description = solicitacaopagamentoCartao.Description,
+        //            Installments = solicitacaopagamentoCartao.Installments,
+        //            PaymentMethodId = solicitacaopagamentoCartao.PaymentMethodId,
+        //            Payer = new PaymentPayerRequest
+        //            {
+        //                Email = solicitacaopagamentoCartao.CardholderEmail,
+        //                Identification = new IdentificationRequest
+        //                {
+        //                    Type = solicitacaopagamentoCartao.IdentificationType,
+        //                    Number = solicitacaopagamentoCartao.IdentificationNumber,
+        //                },
+        //                FirstName = solicitacaopagamentoCartao.CardholderName
+        //            },
+        //        };
+
+        //        var client = new PaymentClient();
+        //        Payment payment = await client.CreateAsync(paymentRequest, requestOptions);
+
+        //        return Ok(payment);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //         return StatusCode(500, ex.Message);
+        //    }
+        //}
+
         [HttpPost("/api/ProcessarPagamentoCartao")]
-        public async Task<IActionResult> ProcessarPagamentoCartao([FromBody] SolicitacaoPagamentoCartao solicitacaopagamentoCartao)
+        public async Task<IActionResult> ProcessarPagamentoCartao([FromBody] SolicitacaoPagamentoCartao solicitacaoPagamentoCartao)
         {
             try
             {
@@ -36,21 +79,41 @@ namespace mercadoPagoTeste.Controllers
 
                 var paymentRequest = new PaymentCreateRequest
                 {
-                    TransactionAmount = solicitacaopagamentoCartao.TransactionAmount,
-                    Token = solicitacaopagamentoCartao.Token,
-                    Description = solicitacaopagamentoCartao.Description,
-                    Installments = solicitacaopagamentoCartao.Installments,
-                    PaymentMethodId = solicitacaopagamentoCartao.PaymentMethodId,
+                    TransactionAmount = solicitacaoPagamentoCartao.TransactionAmount,
+                    Token = solicitacaoPagamentoCartao.Token,
+                    Description = solicitacaoPagamentoCartao.Description,
+                    Installments = solicitacaoPagamentoCartao.Installments,
+                    PaymentMethodId = solicitacaoPagamentoCartao.PaymentMethodId,
                     Payer = new PaymentPayerRequest
                     {
-                        Email = solicitacaopagamentoCartao.CardholderEmail,
+                        Email = solicitacaoPagamentoCartao.CardholderEmail,
                         Identification = new IdentificationRequest
                         {
-                            Type = solicitacaopagamentoCartao.IdentificationType,
-                            Number = solicitacaopagamentoCartao.IdentificationNumber,
+                            Type = solicitacaoPagamentoCartao.IdentificationType,
+                            Number = solicitacaoPagamentoCartao.IdentificationNumber,
                         },
-                        FirstName = solicitacaopagamentoCartao.CardholderName
+                        FirstName = solicitacaoPagamentoCartao.CardholderName
                     },
+                    AdditionalInfo = new PaymentAdditionalInfoRequest
+                    {
+                        IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), // Obtém o IP do usuário
+                        Payer = new PaymentAdditionalInfoPayerRequest
+                        {
+                            FirstName = "Débora",
+                            LastName = "Oliveira",
+                            Phone = new PhoneRequest
+                            {
+                                AreaCode ="21",
+                                Number = "972076680"
+                            },
+                            Address = new AddressRequest
+                            {
+                                StreetName = "Rua Vieira Ravasco",
+                                StreetNumber = "51",
+                                ZipCode = "23520185"
+                            }
+                        },
+                    }
                 };
 
                 var client = new PaymentClient();
@@ -60,7 +123,7 @@ namespace mercadoPagoTeste.Controllers
             }
             catch (Exception ex)
             {
-                 return StatusCode(500, ex.Message);
+                return StatusCode(500, ex.Message);
             }
         }
         [HttpPost("/api/ProcessarPagamentoPix")]
@@ -156,217 +219,6 @@ namespace mercadoPagoTeste.Controllers
             return Ok(new { preferenceId = createdPreference.Id });
         }
 
-        [HttpPost("/api/criar-assinatura")]
-        public async Task<IActionResult> CriarAssinatura([FromBody] AssinaturaRequisicao requisicao, [FromHeader(Name = "X-meli-session-id")] string deviceSessionId)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(deviceSessionId))
-                {
-                    return BadRequest("Device Session ID não foi fornecido.");
-                }
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-                           httpClient.DefaultRequestHeaders.Add("X-meli-session-id", deviceSessionId);
-
-                    MercadoPagoConfig.AccessToken = "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172";
-
-                    var subscriptionRequest = new
-                    {
-                        preapproval_plan_id = requisicao.preapproval_plan_id, // ID do plano criado previamente no Mercado Pago
-                        card_token_id = requisicao.Token,
-                        payer_email = requisicao.Email,
-                        BackUrl = "https://seusite.com/sucesso-assinatura"
-                    };
-
-                    var conteudo = new StringContent(JsonSerializer.Serialize(subscriptionRequest), Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("https://api.mercadopago.com/preapproval", conteudo);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        // PUT api/<MercadoPagoController>/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PausarAssinatura(string id, [FromBody] string value)
-        {
-            try
-            {
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-                    
-
-                    MercadoPagoConfig.AccessToken = "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172";
-
-                    var AtualizarRequest = new
-                    {
-                        status = "paused"
-                    };
-
-                    var conteudo = new StringContent(JsonSerializer.Serialize(AtualizarRequest), Encoding.UTF8, "application/json");
-                    var response = await httpClient.PutAsync($"https://api.mercadopago.com/preapproval/{id}", conteudo);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-        [HttpGet("{id}")]
-        public async Task<IActionResult> ObterAssinatura(string id)
-        {
-            try
-            {
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-
-                    var response = await httpClient.GetAsync($"https://api.mercadopago.com/preapproval/{id}");
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> BuscarAssinaturaPorEmail(string email)
-        {
-            try
-            {
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-
-                    var response = await httpClient.GetAsync($"https://api.mercadopago.com/preapproval/search?payer_email={Uri.EscapeDataString(email)}");
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet("BuscarCliente")]
-        public async Task<IActionResult> BuscarCliente(string id)
-        {
-            try
-            {
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-
-                    var response = await httpClient.GetAsync($"https://api.mercadopago.com/v1/customers/{id}");
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet("BuscarPagamentosEmail")]
-        public async Task<IActionResult>BuscarPagamentosExternall(string externalReference, string payerId)
-        {
-            try
-            {
-
-                //token de teste:
-                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Authorization =
-                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
-
-                    var response = await httpClient.GetAsync($"https://api.mercadopago.com/v1/payments/search?external_reference={Uri.EscapeDataString(externalReference)}&payer.id={Uri.EscapeDataString(payerId)}");
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
-                    }
-
-                    return Ok(await response.Content.ReadAsStringAsync());
-
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
         [HttpGet]
         [Route("api/CapturarPagamento")]
         public async Task <IActionResult> CapturarPagamento(string id)
@@ -398,6 +250,48 @@ namespace mercadoPagoTeste.Controllers
             {
                 return StatusCode(500, ex.Message);
             }
+        }
+
+        [HttpPost("/api/CriarCliente")]
+
+        public async Task<IActionResult> CriarCliente([FromBody] AssinaturaRequisicao solicitacaoPagamentoCartao, [FromHeader(Name = "X-meli-session-id")] string deviceSessionId)
+        {
+
+            MercadoPagoConfig.AccessToken = "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172";
+
+            var customerRequest = new CustomerRequest
+            {
+                Email = "deboranascy18@gmail.com",
+                FirstName = "Débora",
+                LastName = "Oliveira",
+                Phone = new PhoneRequest{
+                    AreaCode ="51",
+                    Number = "972076680"
+                },
+                Identification = new IdentificationRequest
+                {
+                    Type="CPF",
+                    Number="13712066783"
+                },
+                DefaultAddress= "Casa",
+                Address = new CustomerDefaultAddressRequest {
+                        Id = "123123",
+                        ZipCode = "23520185",
+                        StreetName = "Rua Vieira Ravasco",
+                        StreetNumber = 51,
+                }
+
+            };
+            var customerClient = new CustomerClient();
+            Customer customer = await customerClient.CreateAsync(customerRequest);
+
+            var cardRequest = new CustomerCardCreateRequest
+            {
+                Token = solicitacaoPagamentoCartao.Token
+            };
+            CustomerCard card = await customerClient.CreateCardAsync(customer.Id, cardRequest);
+            return Ok(card);
+
         }
 
         [HttpGet]
@@ -433,7 +327,38 @@ namespace mercadoPagoTeste.Controllers
             }
         }
 
+        [HttpGet("api/ObterListaCartoesCliente/{id}")]
+        //[Route("api/ObterListaCartoesCliente/{id}")]
+        public async Task<IActionResult> ObterListaCartoesCliente(string id)
+        {
+            try
+            {
 
+                //token de teste:
+                //TEST-8247032065591220-101311-f9f1d87ef9fb1c5b8f302eead9d8b2f9-208999172
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.DefaultRequestHeaders.Authorization =
+                           new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "APP_USR-8247032065591220-101311-9e0427ade185518b9e4ee3702b8ec7bc-208999172");
+
+                    var response = await httpClient.GetAsync($"https://api.mercadopago.com/v1/customers/{id}/cards");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        return StatusCode((int)response.StatusCode, $"Erro na requisição: {errorContent}");
+                    }
+
+                    return Ok(await response.Content.ReadAsStringAsync());
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
 
     }
 }
